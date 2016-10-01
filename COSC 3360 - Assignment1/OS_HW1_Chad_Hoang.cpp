@@ -8,27 +8,31 @@
 using namespace std;
 
 // Variables
-int processID;
-int numOfResources = 0;
-int numOfProcesses = 0;
-struct Resource 
+int processID;							//	The ID of the process
+int numOfResources = 0;					//	The total number of resource nodes
+int numOfProcesses = 0;					//	The total number of processes
+struct Resource							//	Structure of the resource node
 {
 	int ID;
 	int amount;
 };
-Resource *Resources;
+Resource *resources;					//	Array that contains all the structures of the resrouce nodes
+int *available;							//	Array that contains the number of resource amounts with index as resource IDS 
 struct Process
 {
 	int ID;
 	int deadline;
 	int computeTime;
 };
+Process **processes;					//	Array that contains all the structures of the processes and the if it is read/write
+int **max;
 
+
+//	Methods
 int GetFirstIntInString(string inputString);
 
 int main(int argc, char* argv[])
 {
-
 	//	input the string argument of the input file
 	fstream inputFile(argv[1]);
 	
@@ -43,13 +47,24 @@ int main(int argc, char* argv[])
 		//	Find & Assign the amount of resources
 		getline(inputFile, currentLine);
 		numOfResources = GetFirstIntInString(currentLine);
-		Resources = new Resource[numOfResources];
-		cout << "Resources: " << sizeof(Resources)/ sizeof(Resources[0]) << endl;
+		//	Initialize size of resources array & avaliable array
+		resources = new Resource[numOfResources];
+		available = new int[numOfResources];
+		cout << "Resources: " << numOfResources << endl;
 
 		//	Find & Assign the amount of processes
 		getline(inputFile, currentLine);
 		numOfProcesses = GetFirstIntInString(currentLine);
+		//	Initialize size of processes array and read/write size which is 2
+		processes = new Process*[numOfProcesses];
+		for (int i = 0; i < numOfProcesses; i++)
+			processes[i] = new Process[2];
 		cout << "Processes: " << numOfProcesses << "\n\n";
+		
+		//	Find & Assign the size of demands for each resource per process
+		max = new int*[numOfProcesses];
+		for (int i = 0; i < numOfProcesses; i++)
+			max[i] = new int[numOfResources];
 
 		//	Determine the ID and amount of resources each resource has
 		for (int i = 0; i < numOfResources; i++)
@@ -58,10 +73,18 @@ int main(int argc, char* argv[])
 			
 			//	Create new resource struct and add it to array of resources
 			Resource resource;
-			Resources[i] = resource;
-			Resources[i].ID = i;
-			Resources[i].amount = GetFirstIntInString(currentLine);
-			cout << "Resource " << Resources[i].ID << " has " << Resources[i].amount << " amount of resources." << endl;
+			resources[i] = resource;
+			resources[i].ID = i;
+			resources[i].amount = GetFirstIntInString(currentLine);
+			available[i] = resources[i].amount;
+			cout << "Resource " << resources[i].ID << " has " << resources[i].amount << " amount of resources." << endl;
+		}
+
+		//	Processes
+		for (int i = 0; i < numOfProcesses; i++)
+		{
+			//	Create new process struct and add it to array of resources
+			cout << "Resource " << resources[i].ID << " has " << resources[i].amount << " amount of resources." << endl;
 		}
 
 		cout << endl;	//	Skip a line for neatness
