@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="OS_HW1_Chad_Hoang.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
