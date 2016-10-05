@@ -94,22 +94,6 @@ void ReadFromFile(string inputFileName)
 			processes[i] = new Process[2];
 		cout << "Processes: " << numOfProcesses << "\n\n";
 
-		//	Find & Assign the size of demands for each resource per process
-		maxResourcePerProcess = new int*[numOfProcesses];
-		for (int i = 1; i <= numOfProcesses * numOfResources; i++)
-			maxResourcePerProcess[i] = new int[numOfResources];
-		
-		for (int i = 1; i <= numOfProcesses; i++)
-		{
-			for (int j = 1; j <= numOfResources; j++)
-			{
-				maxResourcePerProcess[i][j] = 7;
-				cout << "[" << i << "," << j << "]" << ": " << maxResourcePerProcess[i][j] << endl;
-			}
-		}
-
-		cout << endl;	//	Skip a line for neatness
-
 		//	Determine the ID and amount of resources each resource has
 		for (int i = 0; i < numOfResources; i++)
 		{
@@ -124,10 +108,28 @@ void ReadFromFile(string inputFileName)
 			cout << "Resource " << resources[i].ID << " has " << resources[i].amount << " amount of resources." << endl;
 		}
 
+		cout << endl;	//	Skip a line for neatness
+
 		//	Processes
 		for (int i = 0; i < numOfProcesses; i++)
 		{
 			//	Create new process struct and add it to array of resources
+		}
+
+		cout << endl;	//	Skip a line for neatness
+
+		//	Find & Assign the size of demands for each resource per process
+		maxResourcePerProcess = new int*[numOfProcesses];
+		for (int i = 1; i <= numOfProcesses * numOfResources; i++)
+			maxResourcePerProcess[i] = new int[numOfResources];
+		
+		for (int i = 1; i <= numOfProcesses; i++)
+		{
+			for (int j = 1; j <= numOfResources; j++)
+			{
+				maxResourcePerProcess[i][j] = 7;
+				cout << "[" << i << "," << j << "]" << ": " << maxResourcePerProcess[i][j] << endl;
+			}
 		}
 
 		cout << endl;	//	Skip a line for neatness
