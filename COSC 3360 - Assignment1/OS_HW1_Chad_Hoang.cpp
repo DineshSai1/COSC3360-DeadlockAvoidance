@@ -96,9 +96,19 @@ void ReadFromFile(string inputFileName)
 
 		//	Find & Assign the size of demands for each resource per process
 		maxResourcePerProcess = new int*[numOfProcesses];
-		for (int i = 0; i < numOfProcesses; i++)
+		for (int i = 1; i <= numOfProcesses * numOfResources; i++)
 			maxResourcePerProcess[i] = new int[numOfResources];
-		//cout << max[0] << endl;
+		
+		for (int i = 1; i <= numOfProcesses; i++)
+		{
+			for (int j = 1; j <= numOfResources; j++)
+			{
+				maxResourcePerProcess[i][j] = 7;
+				cout << "[" << i << "," << j << "]" << ": " << maxResourcePerProcess[i][j] << endl;
+			}
+		}
+
+		cout << endl;	//	Skip a line for neatness
 
 		//	Determine the ID and amount of resources each resource has
 		for (int i = 0; i < numOfResources; i++)
