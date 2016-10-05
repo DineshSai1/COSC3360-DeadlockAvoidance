@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <fstream>
 #include <string>
 
@@ -25,76 +26,17 @@ struct Process
 	int computeTime;
 };
 Process **processes;					//	Array that contains all the structures of the processes and the if it is read/write
-int **max;
+int **maxResourcePerProcess;
 
 
 //	Methods
+void ReadFromFile(string inputFileName);
 int GetFirstIntInString(string inputString);
 
 int main(int argc, char* argv[])
 {
-	//	input the string argument of the input file
-	fstream inputFile(argv[1]);
-	
-	//	Evaluate the input file
-	if (inputFile.is_open())
-	{
-		cout << "\n" << "Opened file: " << argv[1] << "\n\n";
-		
-		//	Get the first line
-		string currentLine;	
-		
-		//	Find & Assign the amount of resources
-		getline(inputFile, currentLine);
-		numOfResources = GetFirstIntInString(currentLine);
-		//	Initialize size of resources array & avaliable array
-		resources = new Resource[numOfResources];
-		available = new int[numOfResources];
-		cout << "Resources: " << numOfResources << endl;
-
-		//	Find & Assign the amount of processes
-		getline(inputFile, currentLine);
-		numOfProcesses = GetFirstIntInString(currentLine);
-		//	Initialize size of processes array and read/write size which is 2
-		processes = new Process*[numOfProcesses];
-		for (int i = 0; i < numOfProcesses; i++)
-			processes[i] = new Process[2];
-		cout << "Processes: " << numOfProcesses << "\n\n";
-		
-		//	Find & Assign the size of demands for each resource per process
-		max = new int*[numOfProcesses];
-		for (int i = 0; i < numOfProcesses; i++)
-			max[i] = new int[numOfResources];
-
-		//	Determine the ID and amount of resources each resource has
-		for (int i = 0; i < numOfResources; i++)
-		{
-			getline(inputFile, currentLine);
-			
-			//	Create new resource struct and add it to array of resources
-			Resource resource;
-			resources[i] = resource;
-			resources[i].ID = i;
-			resources[i].amount = GetFirstIntInString(currentLine);
-			available[i] = resources[i].amount;
-			cout << "Resource " << resources[i].ID << " has " << resources[i].amount << " amount of resources." << endl;
-		}
-
-		//	Processes
-		for (int i = 0; i < numOfProcesses; i++)
-		{
-			//	Create new process struct and add it to array of resources
-			cout << "Resource " << resources[i].ID << " has " << resources[i].amount << " amount of resources." << endl;
-		}
-
-		cout << endl;	//	Skip a line for neatness
-	}
-	else
-	{
-		cout << "ERROR: invalid file input or file not found." << endl;
-		return 0;
-	}
-
+	//	Read, Evaluate, and Assign variables based in the input .txt file
+	ReadFromFile(argv[1]);
 
 	//	Create the process. Created process is clone of this process
 	processID = fork();
@@ -118,6 +60,75 @@ int main(int argc, char* argv[])
 
 	return 0;
 }
+
+#pragma region ReadFromFile(): Read, Evaluate, and Assign variables based in the input .txt file
+void ReadFromFile(string inputFileName)
+{
+	//	input the string argument of the input file
+	fstream inputFile(inputFileName);
+
+	//	Evaluate the input file
+	if (inputFile.is_open())
+	{
+		cout << "\n" << "Opened file: " << inputFileName << "\n\n";
+
+		//	Get the first line
+		string currentLine;
+
+		//	Find & Assign the amount of resources
+		getline(inputFile, currentLine);
+		numOfResources = GetFirstIntInString(currentLine);
+		
+		//	Initialize size of resources array & avaliable array
+		resources = new Resource[numOfResources];
+		available = new int[numOfResources];
+		cout << "Resources: " << numOfResources << endl;
+
+		//	Find & Assign the amount of processes
+		getline(inputFile, currentLine);
+		numOfProcesses = GetFirstIntInString(currentLine);
+		
+		//	Initialize size of processes array and pipe read/write size which is 2
+		processes = new Process*[numOfProcesses];
+		for (int i = 0; i < numOfProcesses; i++)
+			processes[i] = new Process[2];
+		cout << "Processes: " << numOfProcesses << "\n\n";
+
+		//	Find & Assign the size of demands for each resource per process
+		maxResourcePerProcess = new int*[numOfProcesses];
+		for (int i = 0; i < numOfProcesses; i++)
+			maxResourcePerProcess[i] = new int[numOfResources];
+		//cout << max[0] << endl;
+
+		//	Determine the ID and amount of resources each resource has
+		for (int i = 0; i < numOfResources; i++)
+		{
+			getline(inputFile, currentLine);
+
+			//	Create new resource struct and add it to array of resources
+			Resource resource;
+			resources[i] = resource;
+			resources[i].ID = i;
+			resources[i].amount = GetFirstIntInString(currentLine);
+			available[i] = resources[i].amount;
+			cout << "Resource " << resources[i].ID << " has " << resources[i].amount << " amount of resources." << endl;
+		}
+
+		//	Processes
+		for (int i = 0; i < numOfProcesses; i++)
+		{
+			//	Create new process struct and add it to array of resources
+		}
+
+		cout << endl;	//	Skip a line for neatness
+	}
+	else
+	{
+		cout << "ERROR: invalid file input or file not found." << endl;
+		terminate();
+	}
+}
+#pragma endregion
 
 #pragma region GetFirstIntInString(): Returns the first integer in the given string
 int GetFirstIntInString(string inputString)
