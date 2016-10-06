@@ -32,6 +32,7 @@ int **maxResourcePerProcess;
 //	Methods
 void ReadFromFile(string inputFileName);
 int GetFirstIntInString(string inputString);
+int GetMaxResourcePerProcessorValue(string inputString);
 
 int main(int argc, char* argv[])
 {
@@ -105,7 +106,7 @@ void ReadFromFile(string inputFileName)
 			resources[i].ID = i;
 			resources[i].amount = GetFirstIntInString(currentLine);
 			available[i] = resources[i].amount;
-			cout << "Resource " << resources[i].ID << " has " << resources[i].amount << " amount of resources." << endl;
+			cout << "Resource " << resources[i].ID + 1 << " has " << resources[i].amount << " amount of resources." << endl;
 		}
 
 		cout << endl;	//	Skip a line for neatness
@@ -116,19 +117,24 @@ void ReadFromFile(string inputFileName)
 			//	Create new process struct and add it to array of resources
 		}
 
-		cout << endl;	//	Skip a line for neatness
+		//cout << endl;	//	Skip a line for neatness
 
 		//	Find & Assign the size of demands for each resource per process
 		maxResourcePerProcess = new int*[numOfProcesses];
-		for (int i = 1; i <= numOfProcesses * numOfResources; i++)
+		for (int i = 0; i < numOfProcesses * numOfResources; i++)
 			maxResourcePerProcess[i] = new int[numOfResources];
 		
-		for (int i = 1; i <= numOfProcesses; i++)
+		//	Loop through the each process and assign the value of the max value processor can demand from each resource
+		for (int i = 0; i < numOfProcesses; i++)
 		{
-			for (int j = 1; j <= numOfResources; j++)
+			for (int j = 0; j < numOfResources; j++)
 			{
-				maxResourcePerProcess[i][j] = 7;
-				cout << "[" << i << "," << j << "]" << ": " << maxResourcePerProcess[i][j] << endl;
+				//	Get new line and find value in string
+				getline(inputFile, currentLine);
+				maxResourcePerProcess[i][j] = GetMaxResourcePerProcessorValue(currentLine);
+				
+				//	Display result
+				cout << "max[" << i + 1 << "," << j + 1 << "]" << ": " << maxResourcePerProcess[i][j] << endl;
 			}
 		}
 
@@ -157,5 +163,15 @@ int GetFirstIntInString(string inputString)
 		numberString += inputString[j];
 
 	return stoi(numberString);
+}
+#pragma endregion
+
+#pragma region GetMaxResourcePerProcessorValue(): Returns the integer of the max value that the processor can demand from each resource node
+int GetMaxResourcePerProcessorValue(string inputString)
+{
+	int pos = inputString.find("=");
+	string intSubString = inputString.substr(pos + 1);
+
+	return stoi(intSubString);
 }
 #pragma endregion
