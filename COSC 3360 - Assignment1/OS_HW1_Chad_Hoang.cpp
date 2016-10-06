@@ -169,7 +169,10 @@ int GetFirstIntInString(string inputString)
 #pragma region GetMaxResourcePerProcessorValue(): Returns the integer of the max value that the processor can demand from each resource node
 int GetMaxResourcePerProcessorValue(string inputString)
 {
+	//	Find the first '=' sign which indicates that the desired value is after it
 	int pos = inputString.find("=");
+
+	//	Create a sub string for everything after the '=' sign
 	string intSubString = inputString.substr(pos + 1);
 
 	return stoi(intSubString);
