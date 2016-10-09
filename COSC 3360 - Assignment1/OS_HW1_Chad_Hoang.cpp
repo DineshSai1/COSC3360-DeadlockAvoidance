@@ -9,7 +9,6 @@
 using namespace std;
 
 // Variables
-int processID;							//	The ID of the process
 int numOfResources = 0;					//	The total number of resource nodes
 int numOfProcesses = 0;					//	The total number of processes
 struct Resource							//	Structure of the resource node
@@ -25,19 +24,24 @@ struct Process
 	int deadline;
 	int computeTime;					//	Integer equal to number of requests and releases plus the parenthesized values in the calculate and useresources instructions.
 	string *instructions;				//	Array of instructions for the processor
+	int pipeFile[2];					
 };
 Process *processes;						//	Array that contains all the structures of the processes
 int **maxResourcePerProcess;
+char buffer[20];						//	Chracter buffer length of write message
+int bufferLength;
 
 //	Methods
 void ReadFromFile(string inputFileName);
 int GetFirstIntInString(string inputString);
 int GetMaxResourcePerProcessorValue(string inputString);
+void SortProcessesByDeadline(Process arr[], int left, int right);
+string ReadFromPipe(Process process);
+void WriteToPipe(Process process, string message);
 void calculate(int computeTime);
 void request();
 void release();
 void useresources(int value);
-
 
 
 int main(int argc, char* argv[])
@@ -45,24 +49,41 @@ int main(int argc, char* argv[])
 	//	Read, Evaluate, and Assign variables based in the input .txt file supplied by command argument
 	ReadFromFile(argv[1]);
 
-	//	Create the process. Created process is clone of this process
-	processID = fork();
+	//	Sort processes by deadline and computation time by Longest Job First - LJF
+	SortProcessesByDeadline(processes, 0, numOfProcesses-1);
+	cout << "Process execution sequence sorted by lowest deadline first & highest computation time: " << endl;
+	for (int i = 0; i < numOfProcesses; i++)
+		cout << " " << i+1 << ") Process " << processes[i].ID << " with deadline: " << processes[i].deadline << " and computation time: " << processes[i].computeTime << endl;
+
+	//	Initialize pipes for parent-child communication
+	for (int i = 0; i < numOfProcesses; i++)
+		pipe(processes[i].pipeFile);
+
+	bufferLength = sizeof(buffer) / sizeof(buffer[0]);
+
+	if (pipe(processes[0].pipeFile) == -1)
+	{
+		perror("ERROR: unable to create pipe.");
+		exit(0);
+	}
 	
-	//	Error creating a fork
+	int processID = fork();
 	if (processID == -1)
 	{
-		cout << "ERROR: creating process using fork: " << processID << endl;
-		//exit();
+		perror("ERROR: unable to create process.");
+		exit(0);
 	}
-	//	Process is a child
+	
+	//	Process is a CHILD
 	if (processID == 0)
 	{
-		cout << "I am CHILD process ID: " << processID << endl;
+		string message = ReadFromPipe(processes[0]);
+		cout << message << endl;
 	}
-	//	Process is a parent
+	//	Process is a PARENT
 	else
 	{
-		cout << "I am PARENT process ID: " << processID << endl;
+		WriteToPipe(processes[0], "Hello world");
 	}
 
 	return 0;
@@ -89,7 +110,7 @@ void ReadFromFile(string inputFileName)
 		//	Initialize size of resources array & avaliable array
 		resources = new Resource[numOfResources];
 		available = new int[numOfResources];
-		cout << "Resources: " << numOfResources << endl;
+		cout << "Total Resources: " << numOfResources << endl;
 
 		//	Find & Assign the amount of processes
 		getline(inputFile, currentLine);
@@ -99,7 +120,7 @@ void ReadFromFile(string inputFileName)
 		processes = new Process[numOfProcesses];
 		//for (int i = 0; i < numOfProcesses; i++)
 			//processes[i] = new Process[2];
-		cout << "Processes: " << numOfProcesses << "\n\n";
+		cout << "Total Processes: " << numOfProcesses << "\n\n";
 
 		//	Determine the ID and amount of resources each resource has
 		for (int i = 0; i < numOfResources; i++)
@@ -134,7 +155,7 @@ void ReadFromFile(string inputFileName)
 				maxResourcePerProcess[i][j] = GetMaxResourcePerProcessorValue(currentLine);
 				
 				//	Display result
-				cout << "Resource " << j + 1 << ": " << maxResourcePerProcess[i][j] << endl;
+				cout << " Resource " << j + 1 << ": " << maxResourcePerProcess[i][j] << endl;
 			}
 		}
 
@@ -152,6 +173,9 @@ void ReadFromFile(string inputFileName)
 			}
 			
 			cout << "Parameters for " << currentLine << endl << endl;
+
+			//	ID
+			processes[i].ID = i + 1;
 
 			//	Deadline
 			getline(inputFile, currentLine);
@@ -193,11 +217,13 @@ void ReadFromFile(string inputFileName)
 
 			cout << endl;	//	Skip a line for neatness
 		}
+
+		inputFile.close();
 	}
 	else
 	{
 		cout << "ERROR: invalid file input or file not found." << endl;
-		terminate();
+		exit(0);
 	}
 }
 #pragma endregion
@@ -232,6 +258,60 @@ int GetMaxResourcePerProcessorValue(string inputString)
 	return stoi(intSubString);
 }
 #pragma endregion
+
+#pragma region SortProcessesByDeadline():  Sort processes by deadline using Quick Sort Algorithm. If tied, the longer compute time takes prioity
+void SortProcessesByDeadline(Process arr[], int left, int right)
+{
+	int i = left, j = right;
+	Process temp;
+	Process pivot = arr[(left + right) / 2];
+
+	//	Partioning
+	while (i <= j) 
+	{
+		while (arr[i].deadline < pivot.deadline)
+			i++;
+		while (arr[j].deadline > pivot.deadline)
+			j--;
+		while (arr[j].deadline == pivot.deadline && arr[j].computeTime < pivot.computeTime)
+			j--;
+
+		if (i <= j) 
+		{
+			temp = arr[i];
+			arr[i] = arr[j];
+			arr[j] = temp;
+			i++;
+			j--;
+		}
+	};
+
+	//	Recursion
+	if (left < j)
+		SortProcessesByDeadline(arr, left, j);
+	if (i < right)
+		SortProcessesByDeadline(arr, i, right);
+}
+#pragma endregion
+
+#pragma region ReadFromPipe():
+string ReadFromPipe(Process process)
+{
+	close(process.pipeFile[1]);
+	read(process.pipeFile[0], buffer, bufferLength);
+	close(process.pipeFile[0]);
+	return buffer;
+}
+#pragma endregion
+
+#pragma region WriteToPipe(): Write to the 
+void WriteToPipe(Process process, string message)
+{
+	close(process.pipeFile[0]);
+	write(process.pipeFile[1], message.c_str(), bufferLength);
+}
+#pragma endregion
+
 
 #pragma region calculate():  calculate without using resources. wait?
 void calculate(int computeTime)
