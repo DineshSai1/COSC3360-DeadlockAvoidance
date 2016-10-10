@@ -80,10 +80,15 @@ int main(int argc, char* argv[])
 		//WriteToPipe(processes[i], "hello world " + to_string(processes[i].ID));
 	}
 
-	//	Create child fork() processes
-	for (int i = 0; i < 4; i++)
+
+	//	Create child fork() processes & assign a Process variable
+	Process currentProcess;
+	for (int i = 0; i < numOfProcesses; i++)
 	{
+		currentProcess = processes[i];
+		
 		processID = fork();
+
 		if (getpid() != mainParentProcessID)
 			break;
 	}
@@ -94,48 +99,20 @@ int main(int argc, char* argv[])
 		perror("ERROR: unable to create process.");
 		exit(0);
 	}
-
 	//	Process is a CHILD
 	else if (processID == 0)
 	{
-		cout << "Forked Child process with PID: " << getpid() << endl;
+		cout << "Forked Child process with PID: " << currentProcess.ID << endl;
 
-		for (int i = 0; i < numOfProcesses; i++)
+		for (int i = 0; i < sizeof(currentProcess.instructions); i++)
 		{
-			int index = 0;
-			int bytes_read = read(processes[index].pipeFile[0], buffer, bufferLength);
-			cout << bytes_read << endl;
-
-			if (bytes_read <= 0)//if nothing read from buffer...
-			{
-				cout << index << endl;
-				index++;
-			}
-			else
-			{
-				string message = ReadFromPipe(processes[index]);
-				cout  << message << endl;
-			}
+			
+			WriteToPipe(currentProcess, currentProcess.instructions[i]);
+			cout << "Process " << currentProcess.ID << " sent instruction: " << currentProcess.instructions[i] << endl;
+					
 		}
 
-		//	Loop through each instruction of process of index childProcessIndex...
-		/*for (int i = 0; i < sizeof(processes[childProcessIndex].instructions); i++)
-		{
-			//WriteToPipe(processes[childProcessIndex], processes[childProcessIndex].instructions[i]);
-			cout << "  Child Process " << processes[childProcessIndex].ID << " sent instruction: " << processes[childProcessIndex].instructions[i] << endl;
-		}*/
-
 		cout << endl;	//	Skip a line for neatness
-
-		/*while (t)
-		{
-			for (int i = 0; i < sizeof(processes); i++)
-			{
-				string message = ReadFromPipe(processes[i]);
-				cout << "Process " << processes[i].ID << " received message: " << message << " from Parent Process." << endl;
-					
-			}
-		}*/
 
 		exit(0);
 	}
@@ -410,7 +387,7 @@ void CreatePipesForProcesses()
 			perror("ERROR: unable to create pipe.");
 			exit(0);
 		}
-		cout << "  Pipe created for Process " << processes[i].ID << endl;
+		cout << " Pipe created for Process " << processes[i].ID << endl;
 	}
 
 	//	Initialize buffer size of char array for pipe
