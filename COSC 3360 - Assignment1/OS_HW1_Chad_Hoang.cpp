@@ -26,7 +26,8 @@ struct Process
 	int deadline;
 	int computeTime;					//	Integer equal to number of requests and releases plus the parenthesized values in the calculate and useresources instructions.
 	int *allocatedResources;			//	The amount of resources that is currently allocated to the process
-	int *maxDemandPerResource;			//	Array representing the max amount of resources a process can demand from each resource
+	int *maxResources;					//	Array representing the max amount of resources a process can demand from each resource
+	int *neededResources;				//	Array of how much resources needed left to complete execution
 	string *instructions;				//	Array of instructions for the processor
 	int pipeFile[2];					
 };
@@ -209,7 +210,8 @@ void ReadFromFile(string inputFileName)
 		for (int i = 0; i < numOfProcesses; i++)
 		{
 			processes[i].allocatedResources = new int[numOfResources];
-			processes[i].maxDemandPerResource = new int[numOfResources];
+			processes[i].maxResources = new int[numOfResources];
+			processes[i].neededResources = new int[numOfResources];
 		}
 		//maxResourcePerProcess = new int*[numOfProcesses];
 		//for (int i = 0; i < numOfProcesses * numOfResources; i++)
@@ -224,11 +226,12 @@ void ReadFromFile(string inputFileName)
 			{
 				//	Get new line and find value in string
 				getline(inputFile, currentLine);
-				processes[i].maxDemandPerResource[j] = GetMaxResourcePerProcessorValue(currentLine);
-				//maxResourcePerProcess[i][j] = GetMaxResourcePerProcessorValue(currentLine);
+
+				processes[i].maxResources[j] = GetMaxResourcePerProcessorValue(currentLine);
+				processes[i].neededResources[j] = processes[i].maxResources[j];
 				
 				//	Display result
-				cout << " Resource " << j + 1 << ": " << processes[i].maxDemandPerResource[j] << endl;
+				cout << " Resource " << j + 1 << ": " << processes[i].maxResources[j] << endl;
 				//cout << " Resource " << j + 1 << ": " << maxResourcePerProcess[i][j] << endl;
 			}
 		}
@@ -511,7 +514,7 @@ void request(Process process, int requestInts[])
 
 	for (int i = 0; i < numOfResources; i++)
 	{
-		if (requestInts[i] > process.maxDemandPerResource[i])
+		if (requestInts[i] > process.maxResources[i])
 		{
 			cout << "Process " << process.ID << " is requesting more resources than it is allowed to demand from " << " Resource " << i+1 << endl;
 			
