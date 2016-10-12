@@ -10,6 +10,14 @@
 
 using namespace std;
 
+/*
+	Assignment 1
+	COSC 3360 - Fundamentals of Operating Systems
+	University of Houston
+	Chad Hoang
+	1176413
+*/
+
 // Variables
 int numOfResources = 0;						//	The total number of resource nodes
 int numOfProcesses = 0;						//	The total number of processes
@@ -19,21 +27,20 @@ struct Resource							//	Structure of the resource node
 	int amount;
 };
 Resource *resources;					//	Array that contains all the structures of the resrouce nodes
-//int *available;							//	Array that contains the number of resource amounts with index as resource IDs 
 struct Process
 {
 	int ID;
 	int deadline;
 	int computeTime;					//	Integer equal to number of requests and releases plus the parenthesized values in the calculate and useresources instructions.
-	int *allocatedResources;			//	The amount of resources that is currently allocated to the process
-	int *maxResources;					//	Array representing the max amount of resources a process can demand from each resource
-	int *neededResources;				//	Array of how much resources needed left to complete execution
+	int *allocatedResources;			//	The amount of resources that is currently allocated to the process per resource
+	int *maxResources;					//	Array representing the max amount of resources a process need to complete process from each resource
+	int *neededResources;				//	Array of how much resources needed left to complete execution per resouce
 	string *instructions;				//	Array of instructions for the processor
-	int pipeFile[2];					
+	int pipe_ParentWriteToChild[2];			
+	int pipe_ChildWriteToParent[2];			
 };
 Process *processes;						//	Array that contains all the structures of the processes
-//int **maxResourcePerProcess;			//	Multidim array representing the max amount of resources a process can take from each resource
-char buffer[500];						//	Character buffer length of write message
+char buffer[1000];						//	Character buffer length of write message
 int bufferLength;
 int instructionsToProcess = 0;
 int childProcessIndex = 0;
@@ -44,13 +51,11 @@ int GetFirstIntInString(string inputString);
 int GetMaxResourcePerProcessorValue(string inputString);
 void SortProcessesByDeadline(Process arr[], int left, int right);
 void CreatePipesForProcesses();
-string ReadFromPipe(Process process);
-void WriteToPipe(Process process, string message);
 void EvaluateMessage(Process process, string message);
-void calculate(Process process, int computeTime);
-void request(Process process, int requestInts[]);
-void release(Process process, int releaseInts[]);
-void useresources(Process process, int amount);
+void calculate(string message, Process process, int computeTime);
+void request(string message, Process process, int requestInts[]);
+void release(string message, Process process, int releaseInts[]);
+void useresources(string message, Process process, int amount);
 
 
 int main(int argc, char* argv[])
@@ -75,16 +80,9 @@ int main(int argc, char* argv[])
 	int processID;
 	int mainParentProcessID = getpid();
 	
-	//	Write to pipe the processID to each child process
-	for (int i = 0; i < numOfProcesses; i++)
-	{
-		//WriteToPipe(processes[i], "hello world " + to_string(processes[i].ID));
-	}
-
-
 	//	Create child fork() processes & assign a Process variable
 	Process currentProcess;
-	for (int i = 0; i < numOfProcesses; i++)
+	for (int i = 0; i < 1; i++)
 	{
 		currentProcess = processes[i];
 		
@@ -103,56 +101,73 @@ int main(int argc, char* argv[])
 	//	Process is a CHILD
 	else if (processID == 0)
 	{
-		cout << "Forked Child process with PID: " << currentProcess.ID << endl;
+		cout << "Forked Child Process: " << currentProcess.ID << endl;
 
+		//int instructionsLeft = sizeof(currentProcess.instructions);
 		for (int i = 0; i < sizeof(currentProcess.instructions); i++)
 		{
+			close(currentProcess.pipe_ChildWriteToParent[0]);
+			write(currentProcess.pipe_ChildWriteToParent[1], currentProcess.instructions[i].c_str(), bufferLength);
+
+			cout << "Process " << currentProcess.ID << " sent instruction: " << currentProcess.instructions[i] << endl;		
 			
-			WriteToPipe(currentProcess, currentProcess.instructions[i]);
-			cout << "Process " << currentProcess.ID << " sent instruction: " << currentProcess.instructions[i] << endl;
-					
+			close(currentProcess.pipe_ParentWriteToChild[1]);
+
+			while (true)
+			{
+				//string message = ReadFromPipe(currentProcess);
+				
+				read(currentProcess.pipe_ParentWriteToChild[0], buffer, bufferLength);
+
+				string instructionFeedBack = buffer;
+				
+				if (instructionFeedBack.find("SUCCESS") != string::npos)
+				{
+					cout << "Process " << currentProcess.ID << " Completed instruction: " << instructionFeedBack << endl;
+					//instructionsLeft--;
+					break;
+				}
+				else
+					cout << "Process " << currentProcess.ID << " is listening..." << endl;
+			}
+
+			//	Close the Read end
+			close(currentProcess.pipe_ParentWriteToChild[0]);
 		}
 
-		cout << endl;	//	Skip a line for neatness
+		cout << "Process " << currentProcess.ID << " terminated." << endl;	//	Skip a line for neatness
 
 		exit(0);
 	}
 	//	Process if a PARENT
 	else if(getpid() == mainParentProcessID)
 	{
-		cout << "I am parent with fork ID: " << getpid() << endl;
+		//cout << "I am parent with fork ID: " << getpid() << endl;
 		cout << endl;	//	Skip a line for neatness
 
 		//	Process is a PARENT
-		/*while(instructionsToProcess > 0)
+		//while(processes[0].instructions > 0)
+		//for (int i = 0; i < 10; i++)
+		while(true)
 		{
-			for (int i = 0; i < sizeof(processes); i++)
-			{
-				string message = ReadFromPipe(processes[i]);
-				cout << "Parent received instruction: " << message << " from Child Process " << processes[i].ID << endl;
+			
+			//string message = ReadFromPipe(processes[0]);
 
-				EvaluateMessage(processes[i], message);
+			close(processes[0].pipe_ChildWriteToParent[1]);	
+			read(processes[0].pipe_ChildWriteToParent[0], buffer, bufferLength);
+
+			string instructionMessage = buffer;
+
+			if (sizeof(instructionMessage) > 0)
+			{
+				cout << "Parent received instruction: " << instructionMessage << " from Process " << processes[0].ID << endl;
+				EvaluateMessage(processes[0], instructionMessage);
 			}
-
-		}*/
-
-		//while (instructionsToProcess > 0)
-		//{
-			/*cout << "Instructions left to process: " << instructionsToProcess << endl;
-
-			//	Process is a PARENT
-			if (processID != 0)
-			{
-				for (int i = 0; i < sizeof(processes); i++)
-				{
-					string message = ReadFromPipe(processes[i]);
-					cout << "Parent received instruction: " << message << " from Child Process " << processes[i].ID << endl;
-
-					EvaluateMessage(processes[i], message);
-				}
-			}*/
-		//}
+		}
+		close(processes[0].pipe_ChildWriteToParent[0]);
 	}
+
+	cout << "No more instructions left to process. Program terminating..." << endl;
 
 	return 0;
 }
@@ -382,14 +397,18 @@ void CreatePipesForProcesses()
 	cout << "Creating pipes for Processes..." << endl;
 	for (int i = 0; i < numOfProcesses; i++)
 	{
-		pipe(processes[i].pipeFile);
-		
 		//	If process failed to create a pipe... exit
-		if (pipe(processes[i].pipeFile) == -1)
+		if (pipe(processes[i].pipe_ChildWriteToParent) == -1)
 		{
-			perror("ERROR: unable to create pipe.");
+			perror("ERROR: unable to create Child to Parent pipe.");
 			exit(0);
 		}
+		if (pipe(processes[i].pipe_ParentWriteToChild) == -1)
+		{
+			perror("ERROR: unable to create Parent to Child pipe.");
+			exit(0);
+		}
+
 		cout << " Pipe created for Process " << processes[i].ID << endl;
 	}
 
@@ -399,30 +418,12 @@ void CreatePipesForProcesses()
 }
 #pragma endregion
 
-#pragma region ReadFromPipe():
-string ReadFromPipe(Process process)
-{
-	close(process.pipeFile[1]);
-	read(process.pipeFile[0], buffer, bufferLength);
-	close(process.pipeFile[0]);
-	return buffer;
-}
-#pragma endregion
-
-#pragma region WriteToPipe(): Write to the pipe
-void WriteToPipe(Process process, string message)
-{
-	close(process.pipeFile[0]);
-	write(process.pipeFile[1], message.c_str(), bufferLength);
-}
-#pragma endregion
-
 #pragma region EvaluateMessage():  Evaluate the message and run their respective methods
 void EvaluateMessage(Process process, string message)
 {
 	if (message.find("calculate") != string::npos)
 	{
-		calculate(process, 1);
+		calculate(message, process, 1);
 	}
 	else if (message.find("request") != string::npos)
 	{
@@ -454,7 +455,7 @@ void EvaluateMessage(Process process, string message)
 
 
 		//	Perform request function and pass the parameter
-		request(process, intsInMessage);
+		request(message, process, intsInMessage);
 	}
 	else if (message.find("release") != string::npos)
 	{
@@ -483,11 +484,11 @@ void EvaluateMessage(Process process, string message)
 		}
 
 		//	Perform release function and pass the parameter
-		release(process, intsInMessage);
+		release(message, process, intsInMessage);
 	}
 	else if (message.find("useresources") != string::npos)
 	{
-		useresources(process, 1);
+		useresources(message, process, 1);
 	}
 	else
 	{
@@ -497,16 +498,20 @@ void EvaluateMessage(Process process, string message)
 #pragma endregion
 
 #pragma region calculate():  calculate without using resources. wait?
-void calculate(Process process, int computeTime)
+void calculate(string message, Process process, int computeTime)
 {
-	cout << "calculate " << computeTime << endl;
-	WriteToPipe(process, "SUCCESS");
+	cout << "calculate stuff " << endl;
+	message += "=SUCCESS";
+
+	close(process.pipe_ParentWriteToChild[0]);
+	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
+
 	cout << "calculate SUCCESS message written to child" << endl;
 }
 #pragma endregion
 
 #pragma region request():  request vector, m integers
-void request(Process process, int requestInts[])
+void request(string message, Process process, int requestInts[])
 {
 	//	Cache original resource incase of failure
 	int tempResourceArray[numOfResources];
@@ -533,26 +538,38 @@ void request(Process process, int requestInts[])
 		values += to_string(process.allocatedResources[i]) + ", ";
 	values += ")";
 	cout << "Process " + process.ID << " has " << values << " allocated resources." << endl;
+	
+	message += "=SUCCESS";
+	
+	close(process.pipe_ParentWriteToChild[0]);
+	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
 
-	WriteToPipe(process, "SUCCESS");
 	cout << "request SUCCESS message written to child" << endl;
 }
 #pragma endregion
 
 #pragma region release():  release vector, m integers
-void release(Process process, int releaseInts[])
+void release(string message, Process process, int releaseInts[])
 {
 	cout << "release resources " << endl;
-	WriteToPipe(process, "SUCCESS");
+	message += "=SUCCESS";
+	
+	close(process.pipe_ParentWriteToChild[0]);
+	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
+
 	cout << "release SUCCESS message written to child" << endl;
 }
 #pragma endregion
 
 #pragma region useresources():  use allocated resources
-void useresources(Process process, int amount)
+void useresources(string message, Process process, int amount)
 {
 	cout << "use resources " << endl;
-	WriteToPipe(process, "SUCCESS");
+	message += "=SUCCESS";
+	
+	close(process.pipe_ParentWriteToChild[0]);
+	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
+
 	cout << "useresourcesSUCCESS message written to child" << endl;
 }
 #pragma endregion
