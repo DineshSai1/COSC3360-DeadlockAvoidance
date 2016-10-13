@@ -106,12 +106,12 @@ int main(int argc, char* argv[])
 		//int instructionsLeft = sizeof(currentProcess.instructions);
 		for (int i = 0; i < sizeof(currentProcess.instructions); i++)
 		{
-			close(currentProcess.pipe_ChildWriteToParent[0]);
+			//close(currentProcess.pipe_ChildWriteToParent[0]);
 			write(currentProcess.pipe_ChildWriteToParent[1], currentProcess.instructions[i].c_str(), bufferLength);
 
 			cout << "Process " << currentProcess.ID << " sent instruction: " << currentProcess.instructions[i] << endl;		
 			
-			close(currentProcess.pipe_ParentWriteToChild[1]);
+			//close(currentProcess.pipe_ParentWriteToChild[1]);
 
 			while (true)
 			{
@@ -490,6 +490,11 @@ void EvaluateMessage(Process process, string message)
 	{
 		useresources(message, process, 1);
 	}
+	//	Check if process sent termination message
+	else if (message.find("TERMINATED") != string::npos)
+	{
+
+	}
 	else
 	{
 		cout << "ERROR: invalid message." << endl;
@@ -506,7 +511,7 @@ void calculate(string message, Process process, int computeTime)
 	//close(process.pipe_ParentWriteToChild[0]);
 	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
 
-	cout << "calculate SUCCESS message written to child" << endl;
+	cout << "calculate SUCCESS message written to Process " << process.ID << endl;
 }
 #pragma endregion
 
@@ -548,7 +553,7 @@ void request(string message, Process process, int requestInts[])
 	//close(process.pipe_ParentWriteToChild[0]);
 	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
 
-	cout << "request SUCCESS message written to child" << endl;
+	cout << "request SUCCESS message written to Process " << process.ID << endl;
 }
 #pragma endregion
 
@@ -561,7 +566,7 @@ void release(string message, Process process, int releaseInts[])
 	//close(process.pipe_ParentWriteToChild[0]);
 	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
 
-	cout << "release SUCCESS message written to child" << endl;
+	cout << "release SUCCESS message written to Process " << process.ID << endl;
 }
 #pragma endregion
 
@@ -574,6 +579,6 @@ void useresources(string message, Process process, int amount)
 	//close(process.pipe_ParentWriteToChild[0]);
 	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
 
-	cout << "useresourcesSUCCESS message written to child" << endl;
+	cout << "useresources SUCCESS message written to Process " << process.ID << endl;
 }
 #pragma endregion
