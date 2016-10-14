@@ -444,7 +444,8 @@ void EvaluateMessage(Process process, string message)
 		for (int i = 0; i < message.length(); i++)
 		{
 			if (isdigit(message[i]))
-			{	//found a digit, get the int
+			{	
+				//found a digit, get the int
 				for (int j = i; ; j++)
 				{
 					if (isdigit(message[j]))		//consecutive digits
@@ -505,7 +506,8 @@ void EvaluateMessage(Process process, string message)
 	}
 	else
 	{
-		cout << "ERROR: invalid message." << endl;
+		cout << "ERROR: invalid instruction message." << endl;
+		exit(0);
 	}
 }
 #pragma endregion
@@ -514,12 +516,13 @@ void EvaluateMessage(Process process, string message)
 void calculate(string message, Process process, int computeTime)
 {
 	cout << "calculate stuff for Process: " << process.ID << endl;
-	message += "=SUCCESS";
+	
+	cout << message << " SUCCESS message written to Process " << process.ID << endl;
 
+	message += "=SUCCESS";
+	
 	//close(process.pipe_ParentWriteToChild[0]);
 	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
-
-	cout << message << " SUCCESS message written to Process " << process.ID << endl;
 }
 #pragma endregion
 
@@ -529,23 +532,24 @@ void request(string message, Process process, int requestInts[])
 	//	Cache original resource incase of failure
 	int tempResourceArray[numOfResources];
 	memcpy(tempResourceArray, process.allocatedResources, numOfResources);
-
+	
+	//	Loop and add the the requested resources to the allocated resources
 	for (int i = 0; i < numOfResources; i++)
 	{
+		//	if the requested resources is higher then the need...
 		if (requestInts[i] > process.neededResources[i])
 		{
-			cout << "Process " << process.ID << " is requesting more resources than it needs from " << " Resource " << i+1 << endl;
-			
 			//	Reset the allocatedResources to their original values
 			process.allocatedResources = tempResourceArray;
+			
+			cout << "Process " << process.ID << " is requesting more resources than it needs from " << " Resource " << i+1 << endl;
 			break;
 		}
 		else
-		{
 			process.allocatedResources[i] += requestInts[i];
-		}
 	}
 	
+	//	Create a string of the array
 	string values = "(";
 	for (int i = 0; i < numOfResources; i++) 
 	{
@@ -571,12 +575,13 @@ void request(string message, Process process, int requestInts[])
 void release(string message, Process process, int releaseInts[])
 {
 	cout << "release resources for Process: " << process.ID << endl;
+	
+	cout << message << " SUCCESS message written to Process " << process.ID << endl;
+	
 	message += "=SUCCESS";
 	
 	//close(process.pipe_ParentWriteToChild[0]);
 	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
-
-	cout << message << " SUCCESS message written to Process " << process.ID << endl;
 }
 #pragma endregion
 
@@ -584,11 +589,12 @@ void release(string message, Process process, int releaseInts[])
 void useresources(string message, Process process, int amount)
 {
 	cout << "use resources for Process: " << process.ID << endl;
-	message += "=SUCCESS";
 	
-	//close(process.pipe_ParentWriteToChild[0]);
-	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
 
 	cout << message << " SUCCESS message written to Process " << process.ID << endl;
+	
+	message += "=SUCCESS";
+
+	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
 }
 #pragma endregion
