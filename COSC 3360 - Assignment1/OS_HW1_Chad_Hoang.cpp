@@ -24,7 +24,7 @@ int numOfProcesses = 0;						//	The total number of processes
 struct Resource							//	Structure of the resource node
 {
 	int ID;
-	int amount;
+	int available;
 };
 Resource *resources;					//	Array that contains all the structures of the resrouce nodes
 struct Process
@@ -52,6 +52,7 @@ int GetMaxResourcePerProcessorValue(string inputString);
 void SortProcessesByDeadline(Process arr[], int left, int right);
 void CreatePipesForProcesses();
 void EvaluateMessage(Process process, string message);
+bool Safe();
 void calculate(string message, Process process, int computeTime);
 void request(string message, Process process, int requestInts[]);
 void release(string message, Process process, int releaseInts[]);
@@ -127,6 +128,11 @@ int main(int argc, char* argv[])
 					cout << "Process " << currentProcess.ID << " Completed instruction: " << instructionFeedBack << endl << endl;
 					//instructionsLeft--;
 					break;
+				}
+				else if (instructionFeedBack.find("TERMINATE") != string::npos)
+				{
+					cout << "Process " << currentProcess.ID << " terminated." << endl;	//	Skip a line for neatness
+					exit(0);																										//instructionsLeft--;
 				}
 				else
 					cout << "Process " << currentProcess.ID << " is listening..." << endl;
@@ -222,9 +228,9 @@ void ReadFromFile(string inputFileName)
 			Resource resource;
 			resources[i] = resource;
 			resources[i].ID = i;
-			resources[i].amount = GetFirstIntInString(currentLine);
+			resources[i].available = GetFirstIntInString(currentLine);
 			//available[i] = resources[i].amount;
-			cout << "Resource " << resources[i].ID + 1 << " has " << resources[i].amount << " amount of resources." << endl;
+			cout << "Resource " << resources[i].ID + 1 << " has " << resources[i].available << " amount of resources." << endl;
 		}
 
 		cout << endl;	//	Skip a line for neatness
@@ -512,6 +518,15 @@ void EvaluateMessage(Process process, string message)
 }
 #pragma endregion
 
+#pragma region Safe():  Checks if bankers algorithm is safe to continue
+bool Safe()
+{
+	bool isSafe = true;
+
+	return isSafe;
+}
+#pragma endregion
+
 #pragma region calculate():  calculate without using resources. wait?
 void calculate(string message, Process process, int computeTime)
 {
@@ -531,9 +546,11 @@ void request(string message, Process process, int requestInts[])
 {
 	//	Cache original resource incase of failure
 	int tempResourceArray[numOfResources];
+	//	Copies the array to the temp array
 	memcpy(tempResourceArray, process.allocatedResources, numOfResources);
 	
-	//	Loop and add the the requested resources to the allocated resources
+	//	Perform Banker's Algorithm for deadlock avoidance for each resource request
+	//	First perform first 2 checks for amount allocations.
 	for (int i = 0; i < numOfResources; i++)
 	{
 		//	if the requested resources is higher then the need...
@@ -542,13 +559,36 @@ void request(string message, Process process, int requestInts[])
 			//	Reset the allocatedResources to their original values
 			process.allocatedResources = tempResourceArray;
 			
-			cout << "Process " << process.ID << " is requesting more resources than it needs from " << " Resource " << i+1 << endl;
+			cout << "Process " << process.ID << " is requesting more resources than it needs from Resource " << i+1 << ". Process is terminated"  << endl;
+			//	Send termination message
+			write(process.pipe_ChildWriteToParent[1], "TERMINATE", bufferLength);
 			break;
 		}
-		else
-			process.allocatedResources[i] += requestInts[i];
+		//	if the request is more then the available...
+		else if (requestInts[i] > resources[i].available)
+		{
+			//	Process waits
+			break;
+		}
+	}
+	//	No errors in allocation, begin the actual allocation.
+	for (int i = 0; i < numOfResources; i++)
+	{
+		resources[i].available -= requestInts[i];
+		process.allocatedResources[i] += requestInts[i];
+		process.neededResources -= requestInts[i];
 	}
 	
+	//	Check for Safe
+	if (Safe())
+	{
+		//	Complete transaction
+	}
+	else
+	{
+		//	Process must wait
+	}
+
 	//	Create a string of the array
 	string values = "(";
 	for (int i = 0; i < numOfResources; i++) 
