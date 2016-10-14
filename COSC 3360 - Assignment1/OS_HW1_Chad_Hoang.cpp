@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
 	
 	//	Create child fork() processes & assign a Process variable
 	Process currentProcess;
-	for (int i = 0; i < 1; i++)
+	for (int i = 0; i < numOfProcesses; i++)
 	{
 		currentProcess = processes[i];
 		
@@ -101,7 +101,8 @@ int main(int argc, char* argv[])
 	//	Process is a CHILD
 	else if (processID == 0)
 	{
-		cout << "Forked Child Process: " << currentProcess.ID << endl;
+		//cout << endl;	//	Skip a line for neatness
+		cout << "Forked Child Process: " << currentProcess.ID << endl << endl;
 
 		//int instructionsLeft = sizeof(currentProcess.instructions);
 		for (int i = 0; i < sizeof(currentProcess.instructions); i++)
@@ -135,7 +136,10 @@ int main(int argc, char* argv[])
 			//close(currentProcess.pipe_ParentWriteToChild[0]);
 		}
 
-		cout << "Process " << currentProcess.ID << " terminated." << endl;	//	Skip a line for neatness
+		//	Send termination message
+		write(currentProcess.pipe_ChildWriteToParent[1], "TERMINATED", bufferLength);
+		
+		cout << "Process " << currentProcess.ID << " has no more instructions. Process terminated." << endl;	//	Skip a line for neatness
 
 		exit(0);
 	}
@@ -148,26 +152,30 @@ int main(int argc, char* argv[])
 		//	Process is a PARENT
 		//while(processes[0].instructions > 0)
 		//for (int i = 0; i < 10; i++)
-		while(true)
+		while(numOfProcesses > 0)
 		{
-			
 			//string message = ReadFromPipe(processes[0]);
-
-			//close(processes[0].pipe_ChildWriteToParent[1]);	
-			read(processes[0].pipe_ChildWriteToParent[0], buffer, bufferLength);
-
-			string instructionMessage = buffer;
-
-			if (sizeof(instructionMessage) > 0)
+			
+			for (int i = 0; i < 5; i++)
 			{
-				cout << "Parent received instruction: " << instructionMessage << " from Process " << processes[0].ID << endl;
-				EvaluateMessage(processes[0], instructionMessage);
+				//close(processes[0].pipe_ChildWriteToParent[1]);	
+				read(processes[i].pipe_ChildWriteToParent[0], buffer, bufferLength);
+
+				string instructionMessage = buffer;
+
+				//	if 
+				if (sizeof(instructionMessage) > 0)
+				{
+					cout << "Main Process received instruction: " << instructionMessage << " from Process " << processes[i].ID << endl;
+					EvaluateMessage(processes[i], instructionMessage);
+				}
 			}
 		}
 		//close(processes[0].pipe_ChildWriteToParent[0]);
 	}
 
-	cout << "No more instructions left to process. Program terminating..." << endl;
+	cout << endl;	//	Skip a line for neatness
+	cout << "No more instructions left to process. Main Process terminating..." << endl;
 
 	return 0;
 }
@@ -490,10 +498,10 @@ void EvaluateMessage(Process process, string message)
 	{
 		useresources(message, process, 1);
 	}
-	//	Check if process sent termination message
+	//	if process sent termination message... tell main process that it has been terminated
 	else if (message.find("TERMINATED") != string::npos)
 	{
-
+		numOfProcesses--;
 	}
 	else
 	{
@@ -505,13 +513,13 @@ void EvaluateMessage(Process process, string message)
 #pragma region calculate():  calculate without using resources. wait?
 void calculate(string message, Process process, int computeTime)
 {
-	cout << "calculate stuff " << endl;
+	cout << "calculate stuff for Process: " << process.ID << endl;
 	message += "=SUCCESS";
 
 	//close(process.pipe_ParentWriteToChild[0]);
 	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
 
-	cout << "calculate SUCCESS message written to Process " << process.ID << endl;
+	cout << message << " SUCCESS message written to Process " << process.ID << endl;
 }
 #pragma endregion
 
@@ -524,9 +532,9 @@ void request(string message, Process process, int requestInts[])
 
 	for (int i = 0; i < numOfResources; i++)
 	{
-		if (requestInts[i] > process.maxResources[i])
+		if (requestInts[i] > process.neededResources[i])
 		{
-			cout << "Process " << process.ID << " is requesting more resources than it is allowed to demand from " << " Resource " << i+1 << endl;
+			cout << "Process " << process.ID << " is requesting more resources than it needs from " << " Resource " << i+1 << endl;
 			
 			//	Reset the allocatedResources to their original values
 			process.allocatedResources = tempResourceArray;
@@ -546,39 +554,41 @@ void request(string message, Process process, int requestInts[])
 			values += ",";
 	}
 	values += ")";
-	cout << "Process " + process.ID << " has " << values << " allocated resources." << endl;
+
+	cout << "Process " << process.ID << " currently has " << values << " allocated resources." << endl;
+	
+	cout << message << " SUCCESS message written to Process " << process.ID << endl;
 	
 	message += "=SUCCESS";
 	
 	//close(process.pipe_ParentWriteToChild[0]);
 	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
 
-	cout << "request SUCCESS message written to Process " << process.ID << endl;
 }
 #pragma endregion
 
 #pragma region release():  release vector, m integers
 void release(string message, Process process, int releaseInts[])
 {
-	cout << "release resources " << endl;
+	cout << "release resources for Process: " << process.ID << endl;
 	message += "=SUCCESS";
 	
 	//close(process.pipe_ParentWriteToChild[0]);
 	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
 
-	cout << "release SUCCESS message written to Process " << process.ID << endl;
+	cout << message << " SUCCESS message written to Process " << process.ID << endl;
 }
 #pragma endregion
 
 #pragma region useresources():  use allocated resources
 void useresources(string message, Process process, int amount)
 {
-	cout << "use resources " << endl;
+	cout << "use resources for Process: " << process.ID << endl;
 	message += "=SUCCESS";
 	
 	//close(process.pipe_ParentWriteToChild[0]);
 	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
 
-	cout << "useresources SUCCESS message written to Process " << process.ID << endl;
+	cout << message << " SUCCESS message written to Process " << process.ID << endl;
 }
 #pragma endregion
