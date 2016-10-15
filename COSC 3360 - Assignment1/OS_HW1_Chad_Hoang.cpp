@@ -7,8 +7,11 @@
 #include <string>
 #include <string.h>
 #include <sstream>
+#include <chrono>
 
 using namespace std;
+using  ns = chrono::nanoseconds;
+using get_time = chrono::steady_clock;
 
 /*
 	Assignment 1
@@ -43,7 +46,7 @@ Process *processes;						//	Array that contains all the structures of the proces
 char buffer[1000];						//	Character buffer length of write message
 int bufferLength;
 int instructionsToProcess = 0;
-int childProcessIndex = 0;
+int numOfProcessesRemaining;			//	The number of processes remaining to process.
 
 //	Methods
 void ReadFromFile(string inputFileName);
@@ -61,6 +64,9 @@ void useresources(string message, Process process, int amount);
 
 int main(int argc, char* argv[])
 {
+	//	Start compute timer
+	auto start = get_time::now();
+	
 	//	Read, Evaluate, and Assign variables based in the input .txt file supplied by command argument
 	ReadFromFile(argv[1]);
 
@@ -105,7 +111,7 @@ int main(int argc, char* argv[])
 		//cout << endl;	//	Skip a line for neatness
 		cout << "Forked Child Process: " << currentProcess.ID << endl << endl;
 
-		//int instructionsLeft = sizeof(currentProcess.instructions);
+		//	Loop through each instruction and process it to Main Process
 		for (int i = 0; i < sizeof(currentProcess.instructions); i++)
 		{
 			//close(currentProcess.pipe_ChildWriteToParent[0]);
@@ -114,25 +120,43 @@ int main(int argc, char* argv[])
 			cout << "Process " << currentProcess.ID << " sent instruction: " << currentProcess.instructions[i] << endl;		
 			
 			//close(currentProcess.pipe_ParentWriteToChild[1]);
-
 			while (true)
 			{
-				//string message = ReadFromPipe(currentProcess);
-				
 				read(currentProcess.pipe_ParentWriteToChild[0], buffer, bufferLength);
 
 				string instructionFeedBack = buffer;
 				
 				if (instructionFeedBack.find("SUCCESS") != string::npos)
 				{
-					cout << "Process " << currentProcess.ID << " Completed instruction: " << instructionFeedBack << endl << endl;
+					cout << "Process " << currentProcess.ID << " completed instruction: " << instructionFeedBack << endl << endl;
 					//instructionsLeft--;
 					break;
 				}
 				else if (instructionFeedBack.find("TERMINATE") != string::npos)
 				{
 					cout << "Process " << currentProcess.ID << " terminated." << endl;	//	Skip a line for neatness
+
+					write(currentProcess.pipe_ChildWriteToParent[1], "TERMINATED", bufferLength);
+					
 					exit(0);																										//instructionsLeft--;
+				}
+				else if (instructionFeedBack.find("WAIT") != string::npos)
+				{
+					//	Process waits...
+					//write(currentProcess.pipe_ChildWriteToParent[1], currentProcess.instructions[i].c_str(), bufferLength);
+
+					cout << "Process " << currentProcess.ID << " attempting to send instruction: " << currentProcess.instructions[i] << " again." << endl;
+
+					/*bool isWaiting = true;
+					while (isWaiting)
+					{
+						cout << "listening..." << endl;
+						read(currentProcess.pipe_ParentWriteToChild[0], buffer, bufferLength);
+						string feedback = buffer;
+						if (feedback.find("SUCCESS") != string::npos)
+							isWaiting = false;
+						cout << "Process " << currentProcess.ID << " completed instruction: " << feedback << endl << endl;
+					}*/
 				}
 				else
 					cout << "Process " << currentProcess.ID << " is listening..." << endl;
@@ -149,39 +173,35 @@ int main(int argc, char* argv[])
 
 		exit(0);
 	}
-	//	Process if a PARENT
+	//	Process if a PARENT/Main Process
 	else if(getpid() == mainParentProcessID)
 	{
-		//cout << "I am parent with fork ID: " << getpid() << endl;
-		//cout << endl;	//	Skip a line for neatness
-
-		//	Process is a PARENT
-		//while(processes[0].instructions > 0)
-		//for (int i = 0; i < 10; i++)
-		while(numOfProcesses > 0)
+		numOfProcessesRemaining = numOfProcesses;
+		while(numOfProcessesRemaining > 0)
 		{
 			//string message = ReadFromPipe(processes[0]);
 			
-			for (int i = 0; i < 5; i++)
+			for (int i = 0; i < numOfProcesses; i++)
 			{
 				//close(processes[0].pipe_ChildWriteToParent[1]);	
 				read(processes[i].pipe_ChildWriteToParent[0], buffer, bufferLength);
 
 				string instructionMessage = buffer;
 
-				//	if 
+				//	if the read buffer is not empty... evaluate message 
 				if (sizeof(instructionMessage) > 0)
-				{
-					cout << "Main Process received instruction: " << instructionMessage << " from Process " << processes[i].ID << endl;
 					EvaluateMessage(processes[i], instructionMessage);
-				}
 			}
 		}
 		//close(processes[0].pipe_ChildWriteToParent[0]);
 	}
 
-	cout << endl;	//	Skip a line for neatness
-	cout << "No more instructions left to process. Main Process terminating..." << endl;
+	cout << "\nNo more instructions left to process. Main Process terminating..." << endl;
+
+	//	End clock and display the compute time
+	auto end = get_time::now();
+	auto diff = end - start;
+	cout << "\nTotal compute time: " << chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " milliseconds. " << endl << endl;
 
 	return 0;
 }
@@ -437,12 +457,14 @@ void EvaluateMessage(Process process, string message)
 {
 	if (message.find("calculate") != string::npos)
 	{
+		cout << "Main Process received instruction: " << message << " from Process " << process.ID << endl;
+		
 		calculate(message, process, 1);
 	}
 	else if (message.find("request") != string::npos)
 	{
-		//cout << "Process " << process.ID << " " << message << " resources" << endl;
-		
+		cout << "Main Process received instruction: " << message << " from Process " << process.ID << endl;
+
 		//	Find all integers in the message and store it as an array
 		int intsInMessage[numOfResources];
 		int intIndexInString = 0;
@@ -474,6 +496,8 @@ void EvaluateMessage(Process process, string message)
 	}
 	else if (message.find("release") != string::npos)
 	{
+		cout << "Main Process received instruction: " << message << " from Process " << process.ID << endl;
+		
 		//	Find all integers in the message and store it as an array
 		int intsInMessage[numOfResources];
 		int intIndexInString = 0;
@@ -503,15 +527,20 @@ void EvaluateMessage(Process process, string message)
 	}
 	else if (message.find("useresources") != string::npos)
 	{
+		cout << "Main Process received instruction: " << message << " from Process " << process.ID << endl;
+		
 		useresources(message, process, 1);
 	}
 	//	if process sent termination message... tell main process that it has been terminated
 	else if (message.find("TERMINATED") != string::npos)
 	{
-		numOfProcesses--;
+		numOfProcessesRemaining--;
 	}
+	//	else, message is invalid... Terminate the child process
 	else
 	{
+		write(process.pipe_ChildWriteToParent[1], "TERMINATE", bufferLength);
+
 		cout << "ERROR: invalid instruction message." << endl;
 		exit(0);
 	}
@@ -530,9 +559,9 @@ bool Safe()
 #pragma region calculate():  calculate without using resources. wait?
 void calculate(string message, Process process, int computeTime)
 {
-	cout << "calculate stuff for Process: " << process.ID << endl;
+	cout << "Calculating (" << computeTime << ") for Process " << process.ID << "..." << endl;
 	
-	cout << message << " SUCCESS message written to Process " << process.ID << endl;
+	cout << message << " instruction complete message written to Process " << process.ID << endl;
 
 	message += "=SUCCESS";
 	
@@ -544,13 +573,25 @@ void calculate(string message, Process process, int computeTime)
 #pragma region request():  request vector, m integers
 void request(string message, Process process, int requestInts[])
 {
+	//	Create string for request ints and display it
+	string requestValues = "(";
+	for (int i = 0; i < numOfResources; i++)
+	{
+		requestValues += to_string(requestInts[i]);
+		if (i < numOfResources - 1)
+			requestValues += ",";
+	}
+	requestValues += ")";
+
+	cout << "Requesting " << requestValues << " resources for Process: " << process.ID << "..." << endl;
+
 	//	Cache original resource incase of failure
 	int tempResourceArray[numOfResources];
 	//	Copies the array to the temp array
 	memcpy(tempResourceArray, process.allocatedResources, numOfResources);
 	
 	//	Perform Banker's Algorithm for deadlock avoidance for each resource request
-	//	First perform first 2 checks for amount allocations.
+	 //	First perform first 2 checks for amount allocations.
 	for (int i = 0; i < numOfResources; i++)
 	{
 		//	if the requested resources is higher then the need...
@@ -560,17 +601,25 @@ void request(string message, Process process, int requestInts[])
 			process.allocatedResources = tempResourceArray;
 			
 			cout << "Process " << process.ID << " is requesting more resources than it needs from Resource " << i+1 << ". Process is terminated"  << endl;
+			
 			//	Send termination message
 			write(process.pipe_ChildWriteToParent[1], "TERMINATE", bufferLength);
-			break;
+			return;
 		}
 		//	if the request is more then the available...
 		else if (requestInts[i] > resources[i].available)
 		{
 			//	Process waits
+			cout << "Process " << process.ID << " is requesting more resources than available. Process waits." << endl;
+			
+			//	Send wait message
+			//write(process.pipe_ParentWriteToChild[1], "WAIT", bufferLength);
+
+			//return;
 			break;
 		}
 	}
+
 	//	No errors in allocation, begin the actual allocation.
 	for (int i = 0; i < numOfResources; i++)
 	{
@@ -579,29 +628,37 @@ void request(string message, Process process, int requestInts[])
 		process.neededResources -= requestInts[i];
 	}
 	
+	//	Create a string of the array amount of allocated resources in process
+	string allocatedValues = "(";
+	for (int i = 0; i < numOfResources; i++)
+	{
+		allocatedValues += to_string(process.allocatedResources[i]);
+		if (i < numOfResources - 1)
+			allocatedValues += ",";
+	}
+	allocatedValues += ")";
+
+	cout << "Process " << process.ID << " now has " << allocatedValues << " allocated resources." << endl;
+
+	//	Display amount of availiable resources in Resource
+	for (int i = 0; i < numOfResources; i++)
+		cout << "Resource " << resources[i].ID << " now has " << resources[i].available << " availiable resources." << endl;
+
 	//	Check for Safe
 	if (Safe())
 	{
 		//	Complete transaction
+		cout << "Process " << process.ID << " is safe. Transaction completed." << endl;
+
 	}
 	else
 	{
 		//	Process must wait
+		cout << "Process " << process.ID << " is not safe. Process is waiting." << endl;
+		return;
 	}
-
-	//	Create a string of the array
-	string values = "(";
-	for (int i = 0; i < numOfResources; i++) 
-	{
-		values += to_string(process.allocatedResources[i]);
-		if (i < numOfResources - 1)
-			values += ",";
-	}
-	values += ")";
-
-	cout << "Process " << process.ID << " currently has " << values << " allocated resources." << endl;
 	
-	cout << message << " SUCCESS message written to Process " << process.ID << endl;
+	cout << message << " instruction complete message written to Process " << process.ID << endl;
 	
 	message += "=SUCCESS";
 	
@@ -614,10 +671,43 @@ void request(string message, Process process, int requestInts[])
 #pragma region release():  release vector, m integers
 void release(string message, Process process, int releaseInts[])
 {
-	cout << "release resources for Process: " << process.ID << endl;
+	//	Create string for release ints and display it
+	string releaseValues = "(";
+	for (int i = 0; i < numOfResources; i++)
+	{
+		releaseValues += to_string(releaseInts[i]);
+		if (i < numOfResources - 1)
+			releaseValues += ",";
+	}
+	releaseValues += ")";
 	
-	cout << message << " SUCCESS message written to Process " << process.ID << endl;
+	cout << "Releasing " << releaseValues << " resources for Process: " << process.ID << "..." << endl;
 	
+	//	Loop through each release amount and adjust 
+	for (int i = 0; i < numOfResources; i++)
+	{
+		resources[i].available += releaseInts[i];
+		process.allocatedResources[i] -= releaseInts[i];
+		process.neededResources += releaseInts[i];
+	}
+
+	//	Create a string of the array amount of allocated resources in process
+	string allocatedValues = "(";
+	for (int i = 0; i < numOfResources; i++)
+	{
+		allocatedValues += to_string(process.allocatedResources[i]);
+		if (i < numOfResources - 1)
+			allocatedValues += ",";
+	}
+	allocatedValues += ")";
+
+	cout << "Process " << process.ID << " now has " << allocatedValues << " allocated resources." << endl;
+
+	//	Display amount of availiable resources in Resource
+	for (int i = 0; i < numOfResources; i++)
+		cout << "Resource " << resources[i].ID << " now has " << resources[i].available << " availiable resources." << endl;
+
+	cout << message << " instruction complete message written to Process " << process.ID << endl;
 	message += "=SUCCESS";
 	
 	//close(process.pipe_ParentWriteToChild[0]);
@@ -628,11 +718,11 @@ void release(string message, Process process, int releaseInts[])
 #pragma region useresources():  use allocated resources
 void useresources(string message, Process process, int amount)
 {
-	cout << "use resources for Process: " << process.ID << endl;
+	cout << "Using resources for Process: " << process.ID << "..." << endl;
 	
-
-	cout << message << " SUCCESS message written to Process " << process.ID << endl;
+	cout << "Process " << process.ID << " used (" << amount << ") allocated resources." << endl;
 	
+	cout << message << " instruction complete message written to Process " << process.ID << endl;
 	message += "=SUCCESS";
 
 	write(process.pipe_ParentWriteToChild[1], message.c_str(), bufferLength);
