@@ -32,7 +32,9 @@ computation time just like a request.
 A calculate instruction does not use resources and its computation time is indicated in paren-
 theses. A useresources instruction simulates the use of allocated resources and its computation
 time is indicated in parentheses.
+
 The input format is as follows:
+
 m /* number of resources */
 n /* number of processes */
 available[1] = number of instances of resource 1
