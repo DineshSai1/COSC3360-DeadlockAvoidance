@@ -82,8 +82,5 @@ useresources(8);
 calculate(3);
 :
 end.
-For output, print the state of the system after servicing each request: the arrays available,
-allocation, need, and deadline misses, if any.
-Next, let’s try EDF with SJF tie breaker in the second version of your algorithm. Again,
-the deadlock-handling process chooses the next process with the nearest absolute deadline to be
-serviced. However, ties are broken in favor of the process with the shortest remaining execution time (Shortest Job First - SJF). Which scheduling technique yields fewer deadline misses?
+
+For output, print the state of the system after servicing each request: the arrays available, allocation, need, and deadline misses, if any. Next, let’s try EDF with SJF tie breaker in the second version of your algorithm. Again, the deadlock-handling process chooses the next process with the nearest absolute deadline to be serviced. However, ties are broken in favor of the process with the shortest remaining execution time (Shortest Job First - SJF). Which scheduling technique yields fewer deadline misses?
