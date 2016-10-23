@@ -34,3 +34,9 @@ theses. A useresources instruction simulates the use of allocated resources and 
 time is indicated in parentheses.
 
 For output, print the state of the system after servicing each request: the arrays available, allocation, need, and deadline misses, if any. Next, let’s try EDF with SJF tie breaker in the second version of your algorithm. Again, the deadlock-handling process chooses the next process with the nearest absolute deadline to be serviced. However, ties are broken in favor of the process with the shortest remaining execution time (Shortest Job First - SJF). Which scheduling technique yields fewer deadline misses?
+
+
+10/23/2016
+"Grade for OS Assignment_1 is 90. Comments:
+
+No required output display like resource and process status. No comparison of deadline miss of different scheduling methods. Didn’t implement SJF scheduling. Computing time shouldn’t be counted in real time."
